@@ -42,12 +42,6 @@ env = {
 }
 
 function syscall(trap, a1, a2, a3, a4, a5, a6) {
-  //console.log(number, a1, a2, a3, a4, a5, a6);
-  //args = [];
-  //if (argptr !== 0) {
-  //  console.log(HEAP32[argptr / 4 + 1]);
-  //}
-  
   var syncMsg = {
     trap: trap,
     args: [a1, a2, a3, a4, a5, a6],
