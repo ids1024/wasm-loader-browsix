@@ -5,7 +5,7 @@ long syscall(long, long, long, long, long, long, long);
 
 ssize_t write(int fd, const void *buf, size_t count) {
     // XXX remember errno
-    return syscall(4, (long)buf, count, 0, 0, 0, 0);
+    return syscall(4, fd, (long)buf, count, 0, 0, 0);
     /*
       var SYS_WRITE = 4;
       var fd = SYSCALLS.get(), buf = SYSCALLS.get(), count = SYSCALLS.get();

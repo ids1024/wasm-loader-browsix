@@ -140,6 +140,8 @@ function syscallAsync(name, args, transferrables, cb) {
 var waitOff = 0;
 
 function syscall(trap, a1, a2, a3, a4, a5, a6) {
+  console.log("syscall", [trap, a1, a2, a3, a4, a5, a6]);
+
   Atomics.store(HEAP32, waitOff >> 2, 0);
 
   self.postMessage({
@@ -184,15 +186,12 @@ function init1(data) {
 
     console.log('B');
 
-    //syscall(252, 42);
-
-    //console.log('C');
-
     var importObject = {'env': env};
     var bytes = readFileSync('hello.wasm');
     WebAssembly.instantiate(bytes, importObject).then(results => {
       // XXX envp
-      results.instance.exports.main(argc, argv);
+      var ret = results.instance.exports.main(argc, argv);
+      syscall(252, ret); // exit
     });
   });
 }
