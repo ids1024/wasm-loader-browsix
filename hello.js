@@ -166,26 +166,6 @@ function init1(data) {
                err => {
      // XXX handle error
               
-    console.log('A');
-   
-    var view = new Int8Array(memory.buffer);
-    view[32] = 72;
-    view[33] = 101;
-    view[34] = 108;
-    view[35] = 108;
-    view[36] = 111;
-    view[37] = 32;
-    view[38] = 87;
-    view[39] = 111;
-    view[40] = 114;
-    view[41] = 108;
-    view[42] = 100;
-    view[43] = 33;
-    view[44] = 10;
-    syscall(4, 1, 32, 13);
-
-    console.log('B');
-
     var importObject = {'env': env};
     var bytes = readFileSync('hello.wasm');
     WebAssembly.instantiate(bytes, importObject).then(results => {
