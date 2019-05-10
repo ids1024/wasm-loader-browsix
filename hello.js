@@ -71,6 +71,15 @@ function complete (id, args) {
   }
 };
 
+function addEventListener(type, handler) {
+  if (!handler)
+    return;
+  if (this.signalHandlers[type])
+    this.signalHandlers[type].push(handler);
+  else
+    this.signalHandlers[type] = [handler];
+}
+
 self.onmessage = function(ev) {
   var response = SyscallResponseFrom(ev);
   if (!response) {
@@ -123,19 +132,51 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
   return Atomics.load(HEAP32, (waitOff >> 2) + 1);
 }
 
-var PER_BLOCKING = 0x80;
-syscallAsync('personality', 
-             [PER_BLOCKING, memory.buffer, waitOff],
-             [],
-             err => {
-   // XXX handle error
- 
-  var importObject = {'env': env};
-  readFile('hello.wasm').then(bytes =>
-    WebAssembly.instantiate(bytes, importObject)
-  ).then(results => {
-    // XXX envp
-    results.instance.exports.main(argc, argv);
-  });
-});
+function init1(data) {
+  // TODO
+  console.log("init1\n");
 
+  var PER_BLOCKING = 0x80;
+  syscallAsync('personality', 
+               [PER_BLOCKING, memory.buffer, waitOff],
+               [],
+               err => {
+     // XXX handle error
+              
+    console.log('A');
+   
+    var view = new Int8Array(memory.buffer);
+    view[32] = 72;
+    view[33] = 101;
+    view[34] = 108;
+    view[35] = 108;
+    view[36] = 111;
+    view[37] = 32;
+    view[38] = 87;
+    view[39] = 111;
+    view[40] = 114;
+    view[41] = 108;
+    view[42] = 100;
+    view[43] = 33;
+    view[44] = 10;
+    syscall(4, 1, 32, 13);
+
+    console.log('B');
+
+    syscall(252, 42);
+
+    console.log('C');
+
+    /*
+    var importObject = {'env': env};
+    readFileAsync('hello.wasm').then(bytes =>
+      WebAssembly.instantiate(bytes, importObject)
+    ).then(results => {
+      // XXX envp
+      results.instance.exports.main(argc, argv);
+    });
+    */
+  });
+}
+
+addEventListener('init', init1);
