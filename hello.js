@@ -1,48 +1,26 @@
-// Webworker
-if(typeof importScripts === 'function')
-  var isBrosix = true;
-else
-  var isNode = true;
-
-if (isNode) {
-  var fs = require('fs');
-  var readFileSync = fs.ReadFileSync;
-
-  /*
-  var ffi = require('ffi');
-  // #XXX requires glibc
-  var syscall = ffi.Library(null, {
-      'syscall': [ 'long', [ 'long' ], { varargs: true } ]
-  }).syscall;
-  */
-
-  var argv = process.argv.slice(1);
-  var argc = argv.length;
-} else {
-  function readFileSync(path) {
-    // XXX better error handling
-    var encoder = new TextEncoder();
-    var path_bytes = encoder.encode(path);
-    HEAPU8.set(path_bytes, 16); // XXX 16
-    HEAPU8[16 + path_bytes.length] = 0; // NUL
-    fd = syscall(5, 16, 0, 0, 0, 0, 0); // open
-    console.log(fd);
-    if (fd < 0) {
-      console.log("open() Failed: ", fd);
-    }
-    
-    addr = 32; // XXX
-    len = 0;
-    do {
-      bytes = syscall(3, fd, addr + len, 1024, 0, 0, 0); // read
-      len += bytes;
-    } while (bytes > 0);
-    if (bytes < 0) {
-      console.log("read() Failed: ", bytes);
-    }
-    console.log("Read ", len, "byte file")
-    return HEAPU8.slice(addr, addr+len);
+function readFileSync(path) {
+  // XXX better error handling
+  var encoder = new TextEncoder();
+  var path_bytes = encoder.encode(path);
+  HEAPU8.set(path_bytes, 16); // XXX 16
+  HEAPU8[16 + path_bytes.length] = 0; // NUL
+  fd = syscall(5, 16, 0, 0, 0, 0, 0); // open
+  console.log(fd);
+  if (fd < 0) {
+    console.log("open() Failed: ", fd);
   }
+  
+  addr = 32; // XXX
+  len = 0;
+  do {
+    bytes = syscall(3, fd, addr + len, 1024, 0, 0, 0); // read
+    len += bytes;
+  } while (bytes > 0);
+  if (bytes < 0) {
+    console.log("read() Failed: ", bytes);
+  }
+  console.log("Read ", len, "byte file")
+  return HEAPU8.slice(addr, addr+len);
 }
 
 if (typeof SharedArrayBuffer !== 'function') {
