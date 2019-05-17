@@ -8,7 +8,14 @@ ssize_t write(int fd, const void *buf, size_t count) {
     return syscall(4, fd, (long)buf, count, 0, 0, 0);
 }
 
-int main() {
+//void exit(int status) {
+//    syscall(252, status, 0, 0, 0, 0, 0);
+//    asm("unreachable");
+//}
+
+int main(int argc, char **argv) {
     write(1, "Hello world!\n", 13);
+    write(1, argv[1], 4);
+    write(1, "\n", 1);
     return 0;
 }

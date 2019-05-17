@@ -6,15 +6,15 @@ var SYS_READ = 3;
 var SYS_EXIT = 252;
 
 function open(path, flags, mode) {
-  return syscall(SYS_OPEN, path, flags, mode);
+  return syscall(SYS_OPEN, path, flags, mode, 0, 0, 0);
 }
 
 function read(fd, buf, count) {
-  return syscall(SYS_READ, fd, buf, count);
+  return syscall(SYS_READ, fd, buf, count, 0, 0, 0);
 }
 
 function exit(retval) {
-  return syscall(SYS_EXIT, retval);
+  return syscall(SYS_EXIT, retval, 0, 0, 0, 0, 0);
 }
 
 // Writes JS string str to WASM memory at address addr,
@@ -32,14 +32,15 @@ function str_to_mem(str, addr) {
 function readFileSync(path) {
   // XXX better error handling
   str_to_mem(path, 16); // XXX 16
-  fd = open(16, 0, 0);
+  var fd = open(16, 0, 0);
   console.log(fd);
   if (fd < 0) {
     console.log("open() Failed: ", fd);
   }
   
-  addr = 32; // XXX
-  len = 0;
+  var addr = 32; // XXX
+  var len = 0;
+  var bytes;
   do {
     bytes = read(fd, addr + len, 1024);
     len += bytes;
@@ -54,26 +55,26 @@ function readFileSync(path) {
 if (typeof SharedArrayBuffer !== 'function') {
 }
 
-memory = new WebAssembly.Memory({ 
+var memory = new WebAssembly.Memory({ 
   'initial': 1024,
   'maximum': 1024,
   'shared': true
 });
 
-HEAPU8 = new Uint8Array(memory.buffer);
-HEAP32 = new Int32Array(memory.buffer);
+var HEAPU8 = new Uint8Array(memory.buffer);
+var HEAP32 = new Int32Array(memory.buffer);
 
 //console.log(typeof memory.buffer);
 //console.log(memory.buffer);
 
-env = {
+var env = {
   syscall: syscall, 
   memory: memory
 }
 
-msgIdSeq = 1;
-outstanding = {};
-signalHandlers = {};
+var msgIdSeq = 1;
+var outstanding = {};
+var signalHandlers = {};
 
 function SyscallResponseFrom(ev) {
   var requiredOnData = ['id', 'name', 'args'];
