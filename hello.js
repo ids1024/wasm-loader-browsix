@@ -35,7 +35,7 @@ function readFileSync(path) {
   var fd = open(16, 0, 0);
   console.log(fd);
   if (fd < 0) {
-    console.log("open() Failed: ", fd);
+    console.log('open() Failed: ', fd);
   }
   
   var addr = 32; // XXX
@@ -46,9 +46,9 @@ function readFileSync(path) {
     len += bytes;
   } while (bytes > 0);
   if (bytes < 0) {
-    console.log("read() Failed: ", bytes);
+    console.log('read() Failed: ', bytes);
   }
-  console.log("Read ", len, "byte file")
+  console.log('Read ', len, 'byte file');
   return HEAPU8.slice(addr, addr+len);
 }
 
@@ -70,7 +70,7 @@ var HEAP32 = new Int32Array(memory.buffer);
 var env = {
   syscall: syscall, 
   memory: memory
-}
+};
 
 var msgIdSeq = 1;
 var outstanding = {};
@@ -97,7 +97,7 @@ function complete (id, args) {
   else {
     console.log('unknown callback for msg ' + id + ' - ' + args);
   }
-};
+}
 
 function addEventListener(type, handler) {
   if (!handler)
@@ -127,7 +127,7 @@ self.onmessage = function(ev) {
     return;
   }
   complete(response.id, response.args);
-}
+};
 
 function nextMsgId() {
   return ++msgIdSeq;
@@ -152,7 +152,7 @@ var waitOff = 0;
 // Cannot be used until the personality() system call has
 // been used to pass the SharedArrayBuffer to the kernel.
 function syscall(trap, a1, a2, a3, a4, a5, a6) {
-  console.log("syscall", [trap, a1, a2, a3, a4, a5, a6]);
+  console.log('syscall', [trap, a1, a2, a3, a4, a5, a6]);
 
   Atomics.store(HEAP32, waitOff >> 2, 0);
 
@@ -169,44 +169,44 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
 
 function init1(data) {
   // TODO
-  console.log("init1\n");
+  console.log('init1\n');
 
   var args = data.args[0];
-  var environ = data.args[1];
+  //var environ = data.args[1];
 
   // TODO copy heap from args[4]
 
   var PER_BLOCKING = 0x80;
   syscallAsync('personality', 
-               [PER_BLOCKING, memory.buffer, waitOff],
-               [],
-               err => {
-     // XXX handle error
+    [PER_BLOCKING, memory.buffer, waitOff],
+    [],
+    err => {
+      // XXX handle error
               
-    var importObject = {'env': env};
-    var bytes = readFileSync('hello.wasm');
-    WebAssembly.instantiate(bytes, importObject).then(results => {
+      var importObject = {'env': env};
+      var bytes = readFileSync('hello.wasm');
+      WebAssembly.instantiate(bytes, importObject).then(results => {
 
-      var __heap_base = results.instance.exports.__heap_base.value;
-      var argc = args.length;
-      var arg_ptrs = []
-      var addr = __heap_base;
-      for (var i = 0; i < args.length; i++) {
-        arg_ptrs.push(addr);
-        addr += str_to_mem(args[i], addr) + 1;
-      }
-      addr += 4 - (addr % 4);
-      var argv = addr;
-      for (var i = 0; i < arg_ptrs.length; i++) {
-        HEAP32[addr / 4] = arg_ptrs[i];
-        addr += 4;
-      }
+        var __heap_base = results.instance.exports.__heap_base.value;
+        var argc = args.length;
+        var arg_ptrs = [];
+        var addr = __heap_base;
+        for (var i = 0; i < args.length; i++) {
+          arg_ptrs.push(addr);
+          addr += str_to_mem(args[i], addr) + 1;
+        }
+        addr += 4 - (addr % 4);
+        var argv = addr;
+        for (var i = 0; i < arg_ptrs.length; i++) {
+          HEAP32[addr / 4] = arg_ptrs[i];
+          addr += 4;
+        }
 
-      // XXX envp
-      var ret = results.instance.exports.main(argc, argv);
-      exit(ret);
+        // XXX envp
+        var ret = results.instance.exports.main(argc, argv);
+        exit(ret);
+      });
     });
-  });
 }
 
 addEventListener('init', init1);
