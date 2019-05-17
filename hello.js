@@ -1,9 +1,20 @@
+// A lot of the code here is based on code from
+// https://github.com/plasma-umass/browsix-emscripten
+
+var SYS_OPEN = 5;
+var SYS_READ = 3;
+var SYS_EXIT = 252;
+
 function open(path, flags, mode) {
-  return syscall(5, path, flags, mode, 0, 0, 0);
+  return syscall(SYS_OPEN, path, flags, mode);
 }
 
 function read(fd, buf, count) {
-  return syscall(3, fd, buf, count, 0, 0, 0);
+  return syscall(SYS_READ, fd, buf, count);
+}
+
+function exit(retval) {
+  return syscall(SYS_EXIT, retval);
 }
 
 // Writes JS string str to WASM memory at address addr,
@@ -121,6 +132,7 @@ function nextMsgId() {
   return ++msgIdSeq;
 }
 
+// Make an asynchrounous system call
 function syscallAsync(name, args, transferrables, cb) {
   var msgId = nextMsgId();
   this.outstanding[msgId] = cb;
@@ -134,6 +146,10 @@ function syscallAsync(name, args, transferrables, cb) {
 // XXX
 var waitOff = 0;
 
+// Make a synchronous system call.
+//
+// Cannot be used until the personality() system call has
+// been used to pass the SharedArrayBuffer to the kernel.
 function syscall(trap, a1, a2, a3, a4, a5, a6) {
   console.log("syscall", [trap, a1, a2, a3, a4, a5, a6]);
 
@@ -187,7 +203,7 @@ function init1(data) {
 
       // XXX envp
       var ret = results.instance.exports.main(argc, argv);
-      syscall(252, ret); // exit
+      exit(ret);
     });
   });
 }
