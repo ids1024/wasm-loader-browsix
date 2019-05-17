@@ -1,10 +1,27 @@
+function open(path, flags, mode) {
+  return syscall(5, path, flags, mode, 0, 0, 0);
+}
+
+function read(fd, buf, count) {
+  return syscall(3, fd, buf, count, 0, 0, 0);
+}
+
+// Writes JS string str to WASM memory at address addr,
+// as NUL-terminated UTF-8. Returns the length of the C
+// string (excluding NUL byte).
+function str_to_mem(str, addr) {
+  // XXX integrate with allocator?
+  var encoder = new TextEncoder();
+  var bytes = encoder.encode(str);
+  HEAPU8.set(bytes, addr);
+  HEAPU8[addr + bytes.length] = 0; // NUL
+  return bytes.length;
+}
+
 function readFileSync(path) {
   // XXX better error handling
-  var encoder = new TextEncoder();
-  var path_bytes = encoder.encode(path);
-  HEAPU8.set(path_bytes, 16); // XXX 16
-  HEAPU8[16 + path_bytes.length] = 0; // NUL
-  fd = syscall(5, 16, 0, 0, 0, 0, 0); // open
+  str_to_mem(path, 16); // XXX 16
+  fd = open(16, 0, 0);
   console.log(fd);
   if (fd < 0) {
     console.log("open() Failed: ", fd);
@@ -13,7 +30,7 @@ function readFileSync(path) {
   addr = 32; // XXX
   len = 0;
   do {
-    bytes = syscall(3, fd, addr + len, 1024, 0, 0, 0); // read
+    bytes = read(fd, addr + len, 1024);
     len += bytes;
   } while (bytes > 0);
   if (bytes < 0) {
@@ -137,6 +154,11 @@ function init1(data) {
   // TODO
   console.log("init1\n");
 
+  var args = data.args[0];
+  var environ = data.args[1];
+
+  // TODO copy heap from args[4]
+
   var PER_BLOCKING = 0x80;
   syscallAsync('personality', 
                [PER_BLOCKING, memory.buffer, waitOff],
@@ -147,6 +169,22 @@ function init1(data) {
     var importObject = {'env': env};
     var bytes = readFileSync('hello.wasm');
     WebAssembly.instantiate(bytes, importObject).then(results => {
+
+      var __heap_base = results.instance.exports.__heap_base.value;
+      var argc = args.length;
+      var arg_ptrs = []
+      var addr = __heap_base;
+      for (var i = 0; i < args.length; i++) {
+        arg_ptrs.push(addr);
+        addr += str_to_mem(args[i], addr) + 1;
+      }
+      addr += 4 - (addr % 4);
+      var argv = addr;
+      for (var i = 0; i < arg_ptrs.length; i++) {
+        HEAP32[addr / 4] = arg_ptrs[i];
+        addr += 4;
+      }
+
       // XXX envp
       var ret = results.instance.exports.main(argc, argv);
       syscall(252, ret); // exit
