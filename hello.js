@@ -68,7 +68,7 @@ var HEAP32 = new Int32Array(memory.buffer);
 //console.log(memory.buffer);
 
 var env = {
-  syscall: syscall, 
+  __browsix_syscall: syscall,
   memory: memory
 };
 
