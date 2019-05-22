@@ -163,9 +163,12 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
   return Atomics.load(HEAP32, (waitOff >> 2) + 1);
 }
 
-function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
-  console.log('__browsix_syscall', [trap, a1, a2, a3, a4, a5, a6]);
+function print_error(message) {
+  console.error(message);
+  syscallAsync('pwrite', [2, message + '\n', -1], function(err, len) {});
+}
 
+function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
   switch (trap) {
     case SYS_read:
     case SYS_write:
@@ -185,7 +188,7 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
     case SYS_ioctl:
     case SYS_getppid:
     case SYS_wait4:
-    case SYS_llseek:
+    case SYS__llseek:
     case SYS_rt_sigaction:
     case SYS_getcwd:
     case SYS_stat64:
@@ -196,8 +199,10 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
     case SYS_exit_group:
     case SYS_dup3:
       return syscall(trap, a1, a2, a3, a4, a5, a6);
+    case SYS_getuid32:
+      return 0;
     default:
-      console.log("Unrecognized system call ", trap);
+      print_error("Unrecognized system call " + trap);
       exit(255);
   }
 }

@@ -7,7 +7,7 @@ wasm.js: syscall.js wasm.in.js
 	cat $^ > $@
 
 syscall.js: musl/arch/wasm32/bits/syscall.h.in
-	cpp -dD $< \
+	cpp -dN $< \
 		| sed -n 's/.*__NR_\([a-z0-9_]*\).*/var SYS_\1 = __NR_\1;/p' \
 		| cpp -include $< - \
 		| sed '/^#/d' \
