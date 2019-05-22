@@ -4,22 +4,22 @@
 // TODO
 declare var WebAssembly;
 
-function open(path, flags, mode) {
+function open(path: number, flags: number, mode: number): number {
   return syscall(SYS.open, path, flags, mode, 0, 0, 0);
 }
 
-function read(fd, buf, count) {
+function read(fd: number, buf: number, count: number): number {
   return syscall(SYS.read, fd, buf, count, 0, 0, 0);
 }
 
-function exit(retval) {
-  return syscall(SYS.exit_group, retval, 0, 0, 0, 0, 0);
+function exit(retval: number): void {
+  syscall(SYS.exit_group, retval, 0, 0, 0, 0, 0);
 }
 
 // Writes JS string str to WASM memory at address addr,
 // as NUL-terminated UTF-8. Returns the length of the C
 // string (excluding NUL byte).
-function str_to_mem(str, addr) {
+function str_to_mem(str: string, addr: number): number {
   // XXX integrate with allocator?
   var encoder = new TextEncoder();
   var bytes = encoder.encode(str);
@@ -28,7 +28,7 @@ function str_to_mem(str, addr) {
   return bytes.length;
 }
 
-function readFileSync(path) {
+function readFileSync(path: string): Uint8Array {
   // XXX better error handling
   console.log('Reading ', path);
   str_to_mem(path, 16); // XXX 16
@@ -83,7 +83,7 @@ function SyscallResponseFrom(ev) {
   return {id: ev.data.id, name: ev.data.name, args: args};
 }
 
-function complete (id, args) {
+function complete(id, args) {
   var cb = this.outstanding[id];
   delete this.outstanding[id];
   if (cb) {
@@ -163,7 +163,7 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
   return Atomics.load(HEAP32, (waitOff >> 2) + 1);
 }
 
-function print_error(message) {
+function print_error(message: string) {
   console.error(message);
   syscallAsync('pwrite', [2, message + '\n', -1], [], function(err, len) {});
 }
