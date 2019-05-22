@@ -1,6 +1,9 @@
 // A lot of the code here is based on code from
 // https://github.com/plasma-umass/browsix-emscripten
 
+// TODO
+declare var WebAssembly;
+
 function open(path, flags, mode) {
   return syscall(SYS.open, path, flags, mode, 0, 0, 0);
 }
@@ -91,16 +94,17 @@ function complete (id, args) {
   }
 }
 
+// @ts-ignore
 function addEventListener(type, handler) {
   if (!handler)
     return;
-  if (this.signalHandlers[type])
-    this.signalHandlers[type].push(handler);
+  if (signalHandlers[type])
+    signalHandlers[type].push(handler);
   else
-    this.signalHandlers[type] = [handler];
+    signalHandlers[type] = [handler];
 }
 
-self.onmessage = function(ev) {
+onmessage = function(ev) {
   var response = SyscallResponseFrom(ev);
   if (!response) {
     console.log('bad usyscall message, dropping');
@@ -108,7 +112,7 @@ self.onmessage = function(ev) {
     return;
   }
   if (response.name) {
-    var handlers = this.signalHandlers[response.name];
+    var handlers = signalHandlers[response.name];
     if (handlers) {
       for (var i = 0; i < handlers.length; i++)
         handlers[i](response);
@@ -129,7 +133,7 @@ function nextMsgId() {
 function syscallAsync(name, args, transferrables, cb) {
   var msgId = nextMsgId();
   this.outstanding[msgId] = cb;
-  self.postMessage({
+  postMessage({
     id: msgId,
     name: name,
     args: args,
@@ -148,7 +152,7 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
 
   Atomics.store(HEAP32, waitOff >> 2, 0);
 
-  self.postMessage({
+  postMessage({
     trap: trap,
     args: [a1, a2, a3, a4, a5, a6],
   });
@@ -161,7 +165,7 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
 
 function print_error(message) {
   console.error(message);
-  syscallAsync('pwrite', [2, message + '\n', -1], function(err, len) {});
+  syscallAsync('pwrite', [2, message + '\n', -1], [], function(err, len) {});
 }
 
 function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {

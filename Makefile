@@ -3,8 +3,8 @@ LDFLAGS := -Wl,--no-entry -Wl,--export=main -Wl,--allow-undefined-file=functions
 
 all: wasm.js hello.wasm
 
-wasm.js: syscall.js wasm.in.js
-	cat $^ > $@
+wasm.js: syscall.js wasm.ts
+	tsc --lib es2019,webworker --allowJs $^ --outFile $@
 
 syscall.js: musl/arch/wasm32/bits/syscall.h.in
 	echo 'var SYS = {' > $@
