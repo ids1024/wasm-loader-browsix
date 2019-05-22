@@ -130,14 +130,16 @@ function nextMsgId() {
 }
 
 // Make an asynchrounous system call
-function syscallAsync(name, args, transferrables, cb) {
-  var msgId = nextMsgId();
-  this.outstanding[msgId] = cb;
-  postMessage({
-    id: msgId,
-    name: name,
-    args: args,
-  }, transferrables);
+function syscallAsync(name, args, transferrables): Promise<any[]> {
+  return new Promise(resolve => {
+    var msgId = nextMsgId();
+    this.outstanding[msgId] = (...args) => resolve(args);
+    postMessage({
+      id: msgId,
+      name: name,
+      args: args,
+    }, transferrables);
+  });
 }
 
 // XXX
@@ -165,7 +167,7 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
 
 function print_error(message: string) {
   console.error(message);
-  syscallAsync('pwrite', [2, message + '\n', -1], [], function(err, len) {});
+  syscallAsync('pwrite', [2, message + '\n', -1], []);
 }
 
 function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
@@ -219,7 +221,7 @@ var env = {
   memory: memory
 };
 
-function init1(data) {
+async function init(data) {
   // TODO
   console.log('init1\n');
 
@@ -231,37 +233,34 @@ function init1(data) {
   // TODO copy heap from args[4]
 
   var PER_BLOCKING = 0x80;
-  syscallAsync('personality', 
+  // XXX handle error
+  await syscallAsync('personality',
     [PER_BLOCKING, memory.buffer, waitOff],
-    [],
-    err => {
-      // XXX handle error
+    []);
               
-      var importObject = {'env': env};
-      var bytes = readFileSync(executable);
-      WebAssembly.instantiate(bytes, importObject).then(results => {
+  var importObject = {'env': env};
+  var bytes = readFileSync(executable);
+  var results = await WebAssembly.instantiate(bytes, importObject);
 
-        var __heap_base = results.instance.exports.__heap_base.value;
-        var argc = args.length;
-        var arg_ptrs = [];
-        var addr = __heap_base;
-        for (var i = 0; i < args.length; i++) {
-          arg_ptrs.push(addr);
-          addr += str_to_mem(args[i], addr) + 1;
-        }
-        addr += 4 - (addr % 4);
-        var argv = addr;
-        for (var i = 0; i < arg_ptrs.length; i++) {
-          HEAP32[addr / 4] = arg_ptrs[i];
-          addr += 4;
-        }
+  var __heap_base = results.instance.exports.__heap_base.value;
+  var argc = args.length;
+  var arg_ptrs = [];
+  var addr = __heap_base;
+  for (var i = 0; i < args.length; i++) {
+    arg_ptrs.push(addr);
+    addr += str_to_mem(args[i], addr) + 1;
+  }
+  addr += 4 - (addr % 4);
+  var argv = addr;
+  for (var i = 0; i < arg_ptrs.length; i++) {
+    HEAP32[addr / 4] = arg_ptrs[i];
+    addr += 4;
+  }
 
-        // XXX envp
-        var ret = results.instance.exports.main(argc, argv);
+  // XXX envp
+  var ret = results.instance.exports.main(argc, argv);
 
-        exit(ret);
-      });
-    });
+  exit(ret);
 }
 
-addEventListener('init', init1);
+addEventListener('init', init);
