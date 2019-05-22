@@ -1,20 +1,16 @@
 // A lot of the code here is based on code from
 // https://github.com/plasma-umass/browsix-emscripten
 
-var SYS_OPEN = 5;
-var SYS_READ = 3;
-var SYS_EXIT = 252;
-
 function open(path, flags, mode) {
-  return syscall(SYS_OPEN, path, flags, mode, 0, 0, 0);
+  return syscall(SYS.open, path, flags, mode, 0, 0, 0);
 }
 
 function read(fd, buf, count) {
-  return syscall(SYS_READ, fd, buf, count, 0, 0, 0);
+  return syscall(SYS.read, fd, buf, count, 0, 0, 0);
 }
 
 function exit(retval) {
-  return syscall(SYS_EXIT, retval, 0, 0, 0, 0, 0);
+  return syscall(SYS.exit_group, retval, 0, 0, 0, 0, 0);
 }
 
 // Writes JS string str to WASM memory at address addr,
@@ -169,39 +165,46 @@ function print_error(message) {
 }
 
 function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
+  console.log('__browsix_syscall', [trap, a1, a2, a3, a4, a5, a6]);
   switch (trap) {
-    case SYS_read:
-    case SYS_write:
-    case SYS_open:
-    case SYS_close:
-    case SYS_unlink:
-    case SYS_execve:
-    case SYS_chdir:
-    case SYS_getpid:
-    case SYS_access:
-    case SYS_kill:
-    case SYS_rename:
-    case SYS_mkdir:
-    case SYS_rmdir:
-    case SYS_dup:
-    case SYS_pipe2:
-    case SYS_ioctl:
-    case SYS_getppid:
-    case SYS_wait4:
-    case SYS__llseek:
-    case SYS_rt_sigaction:
-    case SYS_getcwd:
-    case SYS_stat64:
-    case SYS_lstat64:
-    case SYS_fstat64:
-    case SYS_getdents64:
-    case SYS_fcntl64:
-    case SYS_exit_group:
-    case SYS_dup3:
+    case SYS.read:
+    case SYS.write:
+    case SYS.open:
+    case SYS.close:
+    case SYS.unlink:
+    case SYS.execve:
+    case SYS.chdir:
+    case SYS.getpid:
+    case SYS.access:
+    case SYS.kill:
+    case SYS.rename:
+    case SYS.mkdir:
+    case SYS.rmdir:
+    case SYS.dup:
+    case SYS.pipe2:
+    case SYS.ioctl:
+    case SYS.getppid:
+    case SYS.wait4:
+    case SYS._llseek:
+    case SYS.rt_sigaction:
+    case SYS.getcwd:
+    case SYS.stat64:
+    case SYS.lstat64:
+    case SYS.fstat64:
+    case SYS.getdents64:
+    case SYS.fcntl64:
+    case SYS.exit_group:
+    case SYS.dup3:
       return syscall(trap, a1, a2, a3, a4, a5, a6);
-    case SYS_getuid32:
+    case SYS.getuid32:
       return 0;
     default:
+      Object.entries(SYS).forEach(([k, v]) => {
+        if (v === trap) {
+          print_error("Unhandled system call '" + k + "'");
+          exit(255);
+        }
+      });
       print_error("Unrecognized system call " + trap);
       exit(255);
   }
