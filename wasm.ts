@@ -3,13 +3,18 @@
 
 // TODO
 declare var WebAssembly;
+declare var BigInt64Array;
 
-function open(path: number, flags: number, mode: number): number {
-  return syscall(SYS.open, path, flags, mode, 0, 0, 0);
+function open(path: string, flags: number, mode: number): Promise<[number, number]> {
+  return syscallAsync('open', [path, flags, mode], []);
+ }
+
+function read(fd: number, count: number): Promise<[number, number, any]> {
+  return syscallAsync('pread', [fd, count, -1], []);
 }
 
-function read(fd: number, buf: number, count: number): number {
-  return syscall(SYS.read, fd, buf, count, 0, 0, 0);
+function fstat(fd: number): Promise<[number, Uint8Array]> {
+  return syscallAsync('fstat', [fd], []);
 }
 
 function exit(retval: number): void {
@@ -28,28 +33,28 @@ function str_to_mem(str: string, addr: number): number {
   return bytes.length;
 }
 
-function readFileSync(path: string): Uint8Array {
+async function readFile(path: string): Promise<Uint8Array> {
   // XXX better error handling
-  console.log('Reading ', path);
-  str_to_mem(path, 16); // XXX 16
-  var fd = open(16, 0, 0);
-  console.log(fd);
-  if (fd < 0) {
+  console.log('Reading', path);
+  var [err, fd] = await open(path, 0, 0);
+  if (err != 0) {
     console.log('open() Failed: ', fd);
   }
+  var stat_buf;
+  [err, stat_buf] = await fstat(fd);
+  if (err != 0) {
+    console.log('fstat() Failed: ', fd);
+  }
+  // TODO
+  var st_size = (new BigInt64Array(stat_buf.buffer.slice(48, 48+8)))[0];
   
-  var addr = 32; // XXX
-  var len = 0;
-  var bytes;
-  do {
-    bytes = read(fd, addr + len, 1024);
-    len += bytes;
-  } while (bytes > 0);
-  if (bytes < 0) {
+  var bytes, len;
+  [err, len, bytes] = await read(fd, 1024);
+  if (err != 0) {
     console.log('read() Failed: ', bytes);
   }
-  console.log('Read ', len, 'byte file');
-  return HEAPU8.slice(addr, addr+len);
+  console.log('Read', len, 'byte file');
+  return bytes;
 }
 
 if (typeof SharedArrayBuffer !== 'function') {
@@ -239,7 +244,7 @@ async function init(data) {
     []);
               
   var importObject = {'env': env};
-  var bytes = readFileSync(executable);
+  var bytes = await readFile(executable);
   var results = await WebAssembly.instantiate(bytes, importObject);
 
   var __heap_base = results.instance.exports.__heap_base.value;
