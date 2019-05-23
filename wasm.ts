@@ -209,6 +209,12 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       return syscall(trap, a1, a2, a3, a4, a5, a6);
     case SYS.getuid32:
       return 0;
+    case SYS.dup2:
+      if (a1 == a2) {
+        return a2;
+      } else {
+        return syscall(SYS.dup3, a1, a2, 0, 0, 0, 0);
+      }
     default:
       Object.entries(SYS).forEach(([k, v]) => {
         if (v === trap) {
