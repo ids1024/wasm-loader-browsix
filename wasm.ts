@@ -304,8 +304,7 @@ async function init(data) {
   var [argv, envp] = write_args_environ_to_heap(args, environ);
   results.instance.exports.__init_libc(envp, HEAP32[argv / 4]);
   var ret = results.instance.exports.main(args.length, argv, envp);
-
-  exit(ret);
+  results.instance.exports.exit(ret);
 }
 
 addEventListener('init', init);
