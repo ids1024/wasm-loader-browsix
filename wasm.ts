@@ -262,7 +262,7 @@ function write_args_environ_to_heap(args: string[], environ: string[]): [number,
   // auxv
   // http://articles.manugarg.com/aboutelfauxiliaryvectors
   HEAP32[__heap_end / 4] = 0;
-  HEAP32([__heap_end+1) / 4] = 0;
+  HEAP32[__heap_end+1 / 4] = 0;
   __heap_end += 8;
 
   // Write arguments and populate argv
