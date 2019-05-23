@@ -49,7 +49,7 @@ async function readFile(path: string): Promise<Uint8Array> {
   var st_size = (new BigInt64Array(stat_buf.buffer.slice(48, 48+8)))[0];
   
   var bytes, len;
-  [err, len, bytes] = await read(fd, 1024);
+  [err, len, bytes] = await read(fd, Number(st_size));
   if (err != 0) {
     console.log('read() Failed: ', bytes);
   }
