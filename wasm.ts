@@ -209,6 +209,13 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       return syscall(trap, a1, a2, a3, a4, a5, a6);
     case SYS.getuid32:
       return 0;
+    case SYS.brk:
+      // TODO
+      if (a1 > __heap_end && a1 < memory.buffer.byteLength) {
+        __heap_end = a1;
+      }
+      console.log(__heap_end);
+      return __heap_end;
     case SYS.dup2:
       if (a1 == a2) {
         return a2;
@@ -232,14 +239,46 @@ var env = {
   memory: memory
 };
 
+var __heap_base;
+var __heap_end;
+
+// Write argv and environ to the heap, where musl can access them
+// Reads and updates __heap_end, so it should be used before any allocation
+// Returns [argv, envp]
+function write_args_environ_to_heap(args: string[], environ: string[]): [number, number] {
+  // Update to word-aligned address
+  __heap_end = Math.floor((__heap_end + 3) / 4);
+
+  // Allocate space for argv
+  var argv = __heap_end;
+  __heap_end += (args.length + 1) * 4;
+
+  // Write environ
+  // XXX implement
+  var envp = __heap_end;
+  HEAP32[__heap_end / 4] = 0;
+  __heap_end += 4;
+
+  // Write arguments and populate argv
+  for (var i = 0; i < args.length; i++) {
+    HEAP32[argv / 4 + i] = __heap_end;
+    __heap_end += str_to_mem(args[i], __heap_end) + 1;
+  }
+
+  // NULL terminate argv array
+  HEAP32[argv / 4 + args.length] = 0;
+  __heap_end += 4 - (__heap_end % 4);
+
+  return [argv, envp];
+}
+
 async function init(data) {
-  // TODO
-  console.log('init1\n');
+  console.log('init');
 
   var args = data.args[0];
   var executable = args[1];
   args = args.slice(1);
-  //var environ = data.args[1];
+  var environ = data.args[1];
 
   // TODO copy heap from args[4]
 
@@ -253,23 +292,12 @@ async function init(data) {
   var bytes = await readFile(executable);
   var results = await WebAssembly.instantiate(bytes, importObject);
 
-  var __heap_base = results.instance.exports.__heap_base.value;
-  var argc = args.length;
-  var arg_ptrs = [];
-  var addr = __heap_base;
-  for (var i = 0; i < args.length; i++) {
-    arg_ptrs.push(addr);
-    addr += str_to_mem(args[i], addr) + 1;
-  }
-  addr += 4 - (addr % 4);
-  var argv = addr;
-  for (var i = 0; i < arg_ptrs.length; i++) {
-    HEAP32[addr / 4] = arg_ptrs[i];
-    addr += 4;
-  }
+  __heap_base = results.instance.exports.__heap_base.value;
+  __heap_end = __heap_base;
 
-  // XXX envp
-  var ret = results.instance.exports.main(argc, argv);
+  var [argv, envp] = write_args_environ_to_heap(args, environ);
+  results.instance.exports.__init_libc(envp, HEAP32[argv / 4]);
+  var ret = results.instance.exports.main(args.length, argv, envp);
 
   exit(ret);
 }
