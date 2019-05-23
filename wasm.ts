@@ -222,6 +222,10 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       } else {
         return syscall(SYS.dup3, a1, a2, 0, 0, 0, 0);
       }
+    // TODO
+    // case SYS.clock_gettime:
+    // case SYS.writev:
+    // case SYS.readv:
     default:
       Object.entries(SYS).forEach(([k, v]) => {
         if (v === trap) {
@@ -303,6 +307,7 @@ async function init(data) {
 
   var [argv, envp] = write_args_environ_to_heap(args, environ);
   results.instance.exports.__init_libc(envp, HEAP32[argv / 4]);
+  results.instance.exports.__libc_start_init();
   var ret = results.instance.exports.main(args.length, argv, envp);
   results.instance.exports.exit(ret);
 }
