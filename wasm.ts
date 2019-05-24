@@ -224,7 +224,22 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       }
     // TODO
     // case SYS.clock_gettime:
-    // case SYS.writev:
+    case SYS.writev:
+      // TODO probably should be done with one write()
+      var written = 0;
+      for (var i = 0; i < a3; i++) {
+        var buf = HEAP32[a2 / 4 + 2*i];
+        var len = HEAP32[a2 / 4 + 2*i + 1];
+        var ret = syscall(SYS.write, a1, buf, len, 0, 0, 0);
+        if (ret < 0) {
+          return ret;
+        }
+        written += len;
+        if (ret != len) {
+          break;
+        }
+      }
+      return written;
     // case SYS.readv:
     default:
       Object.entries(SYS).forEach(([k, v]) => {

@@ -1,9 +1,6 @@
-#include <unistd.h>
-
-typedef int ssize_t;
-typedef unsigned int size_t; 
+#include <stdio.h>
 
 int main(int argc, char **argv) {
-    write(STDOUT_FILENO, "Hello world!\n", 13);
+    printf("Hello world!\n");
     return 0;
 }
