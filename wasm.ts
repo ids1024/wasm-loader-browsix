@@ -6,15 +6,15 @@ declare var WebAssembly;
 declare var BigInt64Array;
 
 function open(path: string, flags: number, mode: number): Promise<[number, number]> {
-  return syscallAsync('open', [path, flags, mode], []);
- }
+  return syscallAsync('open', [path, flags, mode], []) as Promise<[number, number]>;
+}
 
-function read(fd: number, count: number): Promise<[number, number, any]> {
-  return syscallAsync('pread', [fd, count, -1], []);
+function read(fd: number, count: number): Promise<[number, number, Uint8Array]> {
+  return syscallAsync('pread', [fd, count, -1], []) as Promise<[number, number, Uint8Array]>;
 }
 
 function fstat(fd: number): Promise<[number, Uint8Array]> {
-  return syscallAsync('fstat', [fd], []);
+  return syscallAsync('fstat', [fd], []) as Promise<[number, Uint8Array]>;
 }
 
 function exit(retval: number): void {
