@@ -302,7 +302,7 @@ async function init(data) {
 
   var args = data.args[0];
   var executable = args[1];
-  args = args.slice(1);
+  args = args.slice(2);
   var environ = data.args[1];
 
   // TODO copy heap from args[4]
