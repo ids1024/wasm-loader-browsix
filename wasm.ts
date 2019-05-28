@@ -216,6 +216,9 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       }
       console.log(__heap_end);
       return __heap_end;
+    case SYS.set_tid_address:
+      // TODO Threads support
+      return syscall(SYS.getpid, 0, 0, 0, 0, 0, 0);
     case SYS.dup2:
       if (a1 == a2) {
         return a2;
