@@ -275,11 +275,9 @@ function write_args_environ_to_heap(args: string[], environ: string[]): [number,
   var argv = __heap_end;
   __heap_end += (args.length + 1) * 4;
 
-  // Write environ
-  // XXX implement
+  // Allocate space for environ
   var envp = __heap_end;
-  HEAP32[__heap_end / 4] = 0;
-  __heap_end += 4;
+  __heap_end += (Object.keys(environ).length + 1) * 4;
 
   // auxv
   // http://articles.manugarg.com/aboutelfauxiliaryvectors
@@ -292,10 +290,19 @@ function write_args_environ_to_heap(args: string[], environ: string[]): [number,
     HEAP32[argv / 4 + i] = __heap_end;
     __heap_end += str_to_mem(args[i], __heap_end) + 1;
   }
-
-  // NULL terminate argv array
+  // NULL terminate
   HEAP32[argv / 4 + args.length] = 0;
-  __heap_end += 4 - (__heap_end % 4);
+
+  // Write env variables and populate envp
+  var entries = Object.entries(environ);
+  for (var i = 0; i < entries.length; i++) {
+    HEAP32[envp / 4 + i] = __heap_end;
+    var [k, v] = entries[i];
+    var entry = k + '=' + v;
+    __heap_end += str_to_mem(entry, __heap_end) + 1;
+  };
+  // NULL terminate
+  HEAP32[envp / 4 + entries.length] = 0;
 
   return [argv, envp];
 }
