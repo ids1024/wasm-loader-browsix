@@ -244,6 +244,9 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       }
       return written;
     // case SYS.readv:
+    case SYS.madvise:
+      // XXX is there any issue with this?
+      return 0;
     default:
       Object.entries(SYS).forEach(([k, v]) => {
         if (v === trap) {
