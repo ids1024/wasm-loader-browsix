@@ -2,7 +2,6 @@
 // https://github.com/plasma-umass/browsix-emscripten
 
 // TODO
-declare var WebAssembly;
 declare var BigInt64Array;
 
 function open(path: string, flags: number, mode: number): Promise<[number, number]> {
@@ -63,6 +62,7 @@ if (typeof SharedArrayBuffer !== 'function') {
 var memory = new WebAssembly.Memory({ 
   'initial': 1024,
   'maximum': 1024,
+// @ts-ignore
   'shared': true
 });
 
