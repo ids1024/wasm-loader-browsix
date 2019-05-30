@@ -1,9 +1,6 @@
 // A lot of the code here is based on code from
 // https://github.com/plasma-umass/browsix-emscripten
 
-// TODO
-declare var BigInt64Array;
-
 function open(path: string, flags: number, mode: number): Promise<[number, number]> {
   return syscallAsync('open', [path, flags, mode], []) as Promise<[number, number]>;
 }
