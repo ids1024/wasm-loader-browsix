@@ -172,7 +172,24 @@ function print_error(message: string) {
   syscallAsync('pwrite', [2, message + '\n', -1], []);
 }
 
+function syscall_number_to_name(num: number): string | null {
+  var entries = Object.entries(SYS);
+  for (var i = 0; i < entries.length; i++) {
+    var [k, v] = entries[i];
+    if (v === num) {
+      return k;
+    }
+  };
+  return null;
+}
+
 function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
+  if (WASM_STRACE) {
+    var name = syscall_number_to_name(trap) || 'unknown';
+    syscallAsync('pwrite',
+      [2, `${name}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6})\n`, -1],
+      []);
+  }
   console.log('__browsix_syscall', [trap, a1, a2, a3, a4, a5, a6]);
   switch (trap) {
     case SYS.read:
@@ -245,13 +262,12 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       // XXX is there any issue with this?
       return 0;
     default:
-      Object.entries(SYS).forEach(([k, v]) => {
-        if (v === trap) {
-          print_error("Unhandled system call '" + k + "'");
-          exit(255);
-        }
-      });
-      print_error("Unrecognized system call " + trap);
+      var name = syscall_number_to_name(trap);
+      if (name) {
+        print_error("Unhandled system call '" + name + "'");
+      } else {
+        print_error("Unrecognized system call " + trap);
+      }
       exit(255);
   }
 }
@@ -263,6 +279,7 @@ var env = {
 
 var __heap_base;
 var __heap_end;
+var WASM_STRACE: boolean = false;
 
 // Write argv and environ to the heap, where musl can access them
 // Reads and updates __heap_end, so it should be used before any allocation
@@ -314,6 +331,11 @@ async function init(data) {
   var executable = args[1];
   args = args.slice(2);
   var environ = data.args[1];
+
+  if (environ['WASM_STRACE']) {
+    WASM_STRACE = true;
+    delete environ['WASM_STRACE'];
+  }
 
   // TODO copy heap from args[4]
 
