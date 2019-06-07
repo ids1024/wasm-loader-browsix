@@ -42,7 +42,8 @@ async function readFile(path: string): Promise<Uint8Array> {
   if (err != 0) {
     console.log('fstat() Failed: ', fd);
   }
-  // TODO
+
+  // TODO don't hardcode offset
   var st_size = (new BigInt64Array(stat_buf.buffer.slice(48, 48+8)))[0];
   
   var bytes, len;
@@ -323,6 +324,8 @@ function write_args_environ_to_heap(args: string[], environ: string[]): [number,
   return [argv, envp];
 }
 
+// Handler for the 'init' signal, which the Browsix kernel sends at startup
+// with the processes arguments, environmental variables, etc.
 async function init(data: any) {
   console.log('init');
 
@@ -338,8 +341,10 @@ async function init(data: any) {
 
   // TODO copy heap from args[4]
 
+  // Pass SharedArrayBuffer to kernel, so it can access wasm's memory and
+  // support synchronous system calls.
+  // TODO handle error
   var PER_BLOCKING = 0x80;
-  // XXX handle error
   await syscallAsync('personality',
     [PER_BLOCKING, memory.buffer, waitOff],
     []);
@@ -352,6 +357,11 @@ async function init(data: any) {
   __heap_end = __heap_base;
 
   var [argv, envp] = write_args_environ_to_heap(args, environ);
+
+  // NOTE: we can't just call musl's cstart(). It is broken on WebAssembly,
+  // since WebAssembly functions have a fixed number of arguments. So it isn't
+  // possible to support main() with varying number of arguments when calling
+  // from WebAssembly.
   results.instance.exports.__init_libc(envp, HEAP32[argv / 4]);
   results.instance.exports.__libc_start_init();
   var ret = results.instance.exports.main(args.length, argv, envp);
