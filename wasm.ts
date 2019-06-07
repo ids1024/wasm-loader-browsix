@@ -139,7 +139,8 @@ function syscallAsync(name: string, args: any[], transferrables: any[]): Promise
   });
 }
 
-var waitOff: number;
+// XXX
+var waitOff = 0;
 
 // Make a synchronous system call.
 //
@@ -337,6 +338,12 @@ async function init(data: any) {
 
   // TODO copy heap from args[4]
 
+  var PER_BLOCKING = 0x80;
+  // XXX handle error
+  await syscallAsync('personality',
+    [PER_BLOCKING, memory.buffer, waitOff],
+    []);
+              
   var importObject = {'env': env};
   var bytes = await readFile(executable);
   var results = await WebAssembly.instantiate(bytes, importObject);
@@ -344,18 +351,7 @@ async function init(data: any) {
   __heap_base = results.instance.exports.__heap_base.value;
   __heap_end = __heap_base;
 
-  // Allocate 32 bits for for waitOff
-  waitOff = Math.floor((__heap_end + 3) / 4);
-  __heap_end = waitOff + 4;
-
-  // XXX handle error
-  var PER_BLOCKING = 0x80;
-  await syscallAsync('personality',
-    [PER_BLOCKING, memory.buffer, waitOff],
-    []);
-
   var [argv, envp] = write_args_environ_to_heap(args, environ);
-
   results.instance.exports.__init_libc(envp, HEAP32[argv / 4]);
   results.instance.exports.__libc_start_init();
   var ret = results.instance.exports.main(args.length, argv, envp);
