@@ -35,12 +35,12 @@ async function readFile(path: string): Promise<Uint8Array> {
   console.log('Reading', path);
   var [err, fd] = await open(path, 0, 0);
   if (err != 0) {
-    console.log('open() Failed: ', fd);
+    throw 'open() Failed: ' + err;
   }
   var stat_buf;
   [err, stat_buf] = await fstat(fd);
   if (err != 0) {
-    console.log('fstat() Failed: ', fd);
+    throw 'fstat() Failed: ' + err;
   }
 
   // TODO don't hardcode offset
@@ -49,7 +49,7 @@ async function readFile(path: string): Promise<Uint8Array> {
   var bytes, len;
   [err, len, bytes] = await read(fd, Number(st_size));
   if (err != 0) {
-    console.log('read() Failed: ', bytes);
+    throw 'read() Failed: ' + err;
   }
   console.log('Read', len, 'byte file');
   return bytes;
