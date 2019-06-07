@@ -29,6 +29,7 @@ function str_to_mem(str: string, addr: number): number {
   return bytes.length;
 }
 
+// Read a file from the Browsix filesystem asynchronously
 async function readFile(path: string): Promise<Uint8Array> {
   // XXX better error handling
   console.log('Reading', path);
@@ -53,9 +54,6 @@ async function readFile(path: string): Promise<Uint8Array> {
   return bytes;
 }
 
-if (typeof SharedArrayBuffer !== 'function') {
-}
-
 var memory = new WebAssembly.Memory({ 
   'initial': 1024,
   'maximum': 1024,
@@ -65,9 +63,6 @@ var memory = new WebAssembly.Memory({
 
 var HEAPU8 = new Uint8Array(memory.buffer);
 var HEAP32 = new Int32Array(memory.buffer);
-
-//console.log(typeof memory.buffer);
-//console.log(memory.buffer);
 
 var msgIdSeq = 1;
 var outstanding = {};
@@ -81,7 +76,7 @@ function SyscallResponseFrom(ev) {
     if (!ev.data.hasOwnProperty(requiredOnData[i]))
       return;
   }
-  var args = ev.data.args; //.map(convertApiErrors);
+  var args = ev.data.args;
   return {id: ev.data.id, name: ev.data.name, args: args};
 }
 
