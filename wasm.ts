@@ -162,11 +162,14 @@ function syscall(trap, a1, a2, a3, a4, a5, a6) {
   return Atomics.load(HEAP32, (waitOff >> 2) + 1);
 }
 
+// Write an error to the JavaScript console, and stderr
 function print_error(message: string) {
   console.error(message);
   syscallAsync('pwrite', [2, message + '\n', -1], []);
 }
 
+// Return the name of the system call with a certain number
+// TODO: More efficient
 function syscall_number_to_name(num: number): string | null {
   var entries = Object.entries(SYS);
   for (var i = 0; i < entries.length; i++) {
@@ -178,6 +181,7 @@ function syscall_number_to_name(num: number): string | null {
   return null;
 }
 
+// Issue a system call. This is the function exported to wasm.
 function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
   if (WASM_STRACE) {
     var name = syscall_number_to_name(trap) || 'unknown';
