@@ -65,10 +65,10 @@ var HEAPU8 = new Uint8Array(memory.buffer);
 var HEAP32 = new Int32Array(memory.buffer);
 
 var msgIdSeq = 1;
-var outstanding = {};
-var signalHandlers = {};
+var outstanding: Record<number, Function> = {};
+var signalHandlers: Record<string, Function[]> = {};
 
-function SyscallResponseFrom(ev) {
+function SyscallResponseFrom(ev: any) {
   var requiredOnData = ['id', 'name', 'args'];
   if (!ev.data)
     return;
@@ -80,9 +80,9 @@ function SyscallResponseFrom(ev) {
   return {id: ev.data.id, name: ev.data.name, args: args};
 }
 
-function complete(id, args) {
-  var cb = this.outstanding[id];
-  delete this.outstanding[id];
+function complete(id: number, args: any[]) {
+  var cb = outstanding[id];
+  delete outstanding[id];
   if (cb) {
     cb.apply(undefined, args);
   }
@@ -127,10 +127,10 @@ function nextMsgId() {
 }
 
 // Make an asynchrounous system call
-function syscallAsync(name, args, transferrables): Promise<any[]> {
+function syscallAsync(name: string, args: any[], transferrables: any[]): Promise<any[]> {
   return new Promise(resolve => {
     var msgId = nextMsgId();
-    this.outstanding[msgId] = (...args) => resolve(args);
+    outstanding[msgId] = (...args: any[]) => resolve(args);
     postMessage({
       id: msgId,
       name: name,
@@ -146,7 +146,7 @@ var waitOff = 0;
 //
 // Cannot be used until the personality() system call has
 // been used to pass the SharedArrayBuffer to the kernel.
-function syscall(trap, a1, a2, a3, a4, a5, a6) {
+function syscall(trap: number, a1: number, a2: number, a3: number, a4: number, a5: number, a6: number) {
   console.log('syscall', [trap, a1, a2, a3, a4, a5, a6]);
 
   Atomics.store(HEAP32, waitOff >> 2, 0);
@@ -182,11 +182,11 @@ function syscall_number_to_name(num: number): string | null {
 }
 
 // Issue a system call. This is the function exported to wasm.
-function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
+function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4: number, a5: number, a6: number) {
   if (WASM_STRACE) {
-    var name = syscall_number_to_name(trap) || 'unknown';
+    var name = syscall_number_to_name(trap);
     syscallAsync('pwrite',
-      [2, `${name}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6})\n`, -1],
+      [2, `${name || 'unknown'}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6})\n`, -1],
       []);
   }
   console.log('__browsix_syscall', [trap, a1, a2, a3, a4, a5, a6]);
@@ -262,10 +262,10 @@ function __browsix_syscall(trap, a1, a2, a3, a4, a5, a6) {
       return 0;
     default:
       var name = syscall_number_to_name(trap);
-      if (name) {
-        print_error("Unhandled system call '" + name + "'");
-      } else {
+      if (name === null) {
         print_error("Unrecognized system call " + trap);
+      } else {
+        print_error("Unhandled system call '" + name + "'");
       }
       exit(255);
   }
@@ -276,8 +276,8 @@ var env = {
   memory: memory
 };
 
-var __heap_base;
-var __heap_end;
+var __heap_base: number;
+var __heap_end: number;
 var WASM_STRACE: boolean = false;
 
 // Write argv and environ to the heap, where musl can access them
@@ -323,7 +323,7 @@ function write_args_environ_to_heap(args: string[], environ: string[]): [number,
   return [argv, envp];
 }
 
-async function init(data) {
+async function init(data: any) {
   console.log('init');
 
   var args = data.args[0];
