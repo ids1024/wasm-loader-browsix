@@ -3,7 +3,7 @@ MUSL := musl
 all: wasm.js
 
 wasm.js: syscall.js wasm.ts
-	tsc --strict --lib es2019,esnext.bigint,webworker --allowJs $^ --outFile $@
+	tsc
 
 syscall.js: $(MUSL)/arch/wasm32/bits/syscall.h.in
 	echo 'var SYS = {' > $@

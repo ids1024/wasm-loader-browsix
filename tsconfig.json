@@ -1,0 +1,10 @@
+{
+  "files": ["syscall.js", "wasm.ts"],
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["es2019", "esnext.bigint", "webworker"],
+    "allowJs": true,
+    "outFile": "wasm.js",
+    "strict": true
+  }
+}
