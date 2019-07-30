@@ -52,9 +52,7 @@ function print_error(message: string) {
 // Return the name of the system call with a certain number
 // TODO: More efficient
 function syscall_number_to_name(num: number): string | null {
-  var entries = Object.entries(SYS);
-  for (var i = 0; i < entries.length; i++) {
-    var [k, v] = entries[i];
+  for (var [k, v] of Object.entries(SYS)) {
     if (v === num) {
       return k;
     }

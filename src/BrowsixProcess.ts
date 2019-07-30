@@ -86,8 +86,8 @@ class BrowsixProcess {
     var requiredOnData = ['id', 'name', 'args'];
     if (!ev.data)
       return;
-    for (var i = 0; i < requiredOnData.length; i++) {
-      if (!ev.data.hasOwnProperty(requiredOnData[i]))
+    for (var i of requiredOnData) {
+      if (!ev.data.hasOwnProperty(i))
         return;
     }
     var args = ev.data.args;
@@ -115,8 +115,8 @@ class BrowsixProcess {
     if (response.name) {
       var handlers = this.signalHandlers[response.name];
       if (handlers) {
-        for (var i = 0; i < handlers.length; i++)
-          handlers[i](response);
+        for (var handler of handlers)
+          handler(response);
       }
       else {
         console.log('unhandled signal ' + response.name);
