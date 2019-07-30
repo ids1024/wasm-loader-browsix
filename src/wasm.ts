@@ -1,6 +1,14 @@
 // A lot of the code here is based on code from
 // https://github.com/plasma-umass/browsix-emscripten
 
+// Round 'num' up so it is aligned to a multiple of 'align'
+function round_up_align(num: number, align: number): number {
+  if (align == 0 || num % align == 0) {
+    return num;
+  }
+  return num + align - num % align;
+}
+
 function open(path: string, flags: number, mode: number): Promise<[number, number]> {
   return syscallAsync('open', [path, flags, mode], []) as Promise<[number, number]>;
 }
@@ -286,7 +294,7 @@ var WASM_STRACE: boolean = false;
 // Returns [argv, envp]
 function write_args_environ_to_heap(args: string[], environ: string[]): [number, number] {
   // Update to word-aligned address
-  __heap_end = Math.floor((__heap_end + 3) / 4);
+  __heap_end = round_up_align(__heap_end, 4);
 
   // Allocate space for argv
   var argv = __heap_end;
