@@ -2,11 +2,11 @@ MUSL := musl
 
 all: wasm.js
 
-wasm.js: syscall.js wasm.ts
+wasm.js: wasm.ts syscall_generated.ts
 	tsc
 
-syscall.js: $(MUSL)/arch/wasm32/bits/syscall.h.in
-	echo 'var SYS = {' > $@
+syscall_generated.ts: $(MUSL)/arch/wasm32/bits/syscall.h.in
+	echo 'var SYS: Record<string, number> = {' > $@
 	cpp -dN $< \
 		| sed -n 's/.*__NR_\([a-z0-9_]*\).*/  \1: __NR_\1,/p' \
 		| cpp -include $< - \
@@ -15,4 +15,4 @@ syscall.js: $(MUSL)/arch/wasm32/bits/syscall.h.in
 	echo '}' >> $@
 
 clean:
-	rm -f wasm.js
+	rm -f wasm.js syscall_generated.ts
