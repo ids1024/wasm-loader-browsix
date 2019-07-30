@@ -1,14 +1,6 @@
 // A lot of the code here is based on code from
 // https://github.com/plasma-umass/browsix-emscripten
 
-// Round 'num' up so it is aligned to a multiple of 'align'
-function round_up_align(num: number, align: number): number {
-  if (align == 0 || num % align == 0) {
-    return num;
-  }
-  return num + align - num % align;
-}
-
 function open(path: string, flags: number, mode: number): Promise<[number, number]> {
   return syscallAsync('open', [path, flags, mode], []) as Promise<[number, number]>;
 }
@@ -23,18 +15,6 @@ function fstat(fd: number): Promise<[number, Uint8Array]> {
 
 function exit(retval: number): void {
   syscall(SYS.exit_group, retval, 0, 0, 0, 0, 0);
-}
-
-// Writes JS string str to WASM memory at address addr,
-// as NUL-terminated UTF-8. Returns the length of the C
-// string (excluding NUL byte).
-function str_to_mem(str: string, addr: number): number {
-  // XXX integrate with allocator?
-  var encoder = new TextEncoder();
-  var bytes = encoder.encode(str);
-  HEAPU8.set(bytes, addr);
-  HEAPU8[addr + bytes.length] = 0; // NUL
-  return bytes.length;
 }
 
 // Read a file from the Browsix filesystem asynchronously
@@ -70,7 +50,6 @@ var memory = new WebAssembly.Memory({
   'shared': true
 });
 
-var HEAPU8 = new Uint8Array(memory.buffer);
 var HEAP32 = new Int32Array(memory.buffer);
 
 var msgIdSeq = 1;
@@ -233,11 +212,11 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
       return 0;
     case SYS.brk:
       // TODO
-      if (a1 > __heap_end && a1 < memory.buffer.byteLength) {
-        __heap_end = a1;
+      if (a1 > program.__heap_end && a1 < memory.buffer.byteLength) {
+        program.__heap_end = a1;
       }
-      console.log(__heap_end);
-      return __heap_end;
+      console.log(program.__heap_end);
+      return program.__heap_end;
     case SYS.set_tid_address:
       // TODO Threads support
       return syscall(SYS.getpid, 0, 0, 0, 0, 0, 0);
@@ -285,52 +264,9 @@ var env = {
   memory: memory
 };
 
-var __heap_base: number;
-var __heap_end: number;
 var WASM_STRACE: boolean = false;
 
-// Write argv and environ to the heap, where musl can access them
-// Reads and updates __heap_end, so it should be used before any allocation
-// Returns [argv, envp]
-function write_args_environ_to_heap(args: string[], environ: string[]): [number, number] {
-  // Update to word-aligned address
-  __heap_end = round_up_align(__heap_end, 4);
-
-  // Allocate space for argv
-  var argv = __heap_end;
-  __heap_end += (args.length + 1) * 4;
-
-  // Allocate space for environ
-  var envp = __heap_end;
-  __heap_end += (Object.keys(environ).length + 1) * 4;
-
-  // auxv
-  // http://articles.manugarg.com/aboutelfauxiliaryvectors
-  HEAP32[__heap_end / 4] = 0;
-  HEAP32[__heap_end+1 / 4] = 0;
-  __heap_end += 8;
-
-  // Write arguments and populate argv
-  for (var i = 0; i < args.length; i++) {
-    HEAP32[argv / 4 + i] = __heap_end;
-    __heap_end += str_to_mem(args[i], __heap_end) + 1;
-  }
-  // NULL terminate
-  HEAP32[argv / 4 + args.length] = 0;
-
-  // Write env variables and populate envp
-  var entries = Object.entries(environ);
-  for (var i = 0; i < entries.length; i++) {
-    HEAP32[envp / 4 + i] = __heap_end;
-    var [k, v] = entries[i];
-    var entry = k + '=' + v;
-    __heap_end += str_to_mem(entry, __heap_end) + 1;
-  };
-  // NULL terminate
-  HEAP32[envp / 4 + entries.length] = 0;
-
-  return [argv, envp];
-}
+var program: WasmMuslProgram;
 
 // Handler for the 'init' signal, which the Browsix kernel sends at startup
 // with the processes arguments, environmental variables, etc.
@@ -357,23 +293,11 @@ async function init(data: any) {
     [PER_BLOCKING, memory.buffer, waitOff],
     []);
               
-  var importObject = {'env': env};
   var bytes = await readFile(executable);
-  var results = await WebAssembly.instantiate(bytes, importObject);
+  var results = await WebAssembly.instantiate(bytes, {env: env});
 
-  __heap_base = results.instance.exports.__heap_base.value;
-  __heap_end = __heap_base;
-
-  var [argv, envp] = write_args_environ_to_heap(args, environ);
-
-  // NOTE: we can't just call musl's cstart(). It is broken on WebAssembly,
-  // since WebAssembly functions have a fixed number of arguments. So it isn't
-  // possible to support main() with varying number of arguments when calling
-  // from WebAssembly.
-  results.instance.exports.__init_libc(envp, HEAP32[argv / 4]);
-  results.instance.exports.__libc_start_init();
-  var ret = results.instance.exports.main(args.length, argv, envp);
-  results.instance.exports.exit(ret);
+  program = new WasmMuslProgram(results.instance, memory);
+  program.run_and_exit(args, environ);
 }
 
 addEventListener('init', init);
