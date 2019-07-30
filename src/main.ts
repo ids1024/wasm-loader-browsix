@@ -2,15 +2,15 @@
 // https://github.com/plasma-umass/browsix-emscripten
 
 function open(path: string, flags: number, mode: number): Promise<[number, number]> {
-  return process.syscallAsync('open', [path, flags, mode], []) as Promise<[number, number]>;
+  return process.syscallAsync("open", [path, flags, mode], []) as Promise<[number, number]>;
 }
 
 function read(fd: number, count: number): Promise<[number, number, Uint8Array]> {
-  return process.syscallAsync('pread', [fd, count, -1], []) as Promise<[number, number, Uint8Array]>;
+  return process.syscallAsync("pread", [fd, count, -1], []) as Promise<[number, number, Uint8Array]>;
 }
 
 function fstat(fd: number): Promise<[number, Uint8Array]> {
-  return process.syscallAsync('fstat', [fd], []) as Promise<[number, Uint8Array]>;
+  return process.syscallAsync("fstat", [fd], []) as Promise<[number, Uint8Array]>;
 }
 
 function exit(retval: number): void {
@@ -20,55 +20,56 @@ function exit(retval: number): void {
 // Read a file from the Browsix filesystem asynchronously
 async function readFile(path: string): Promise<Uint8Array> {
   // XXX better error handling
-  console.log('Reading', path);
-  var [err, fd] = await open(path, 0, 0);
-  if (err != 0) {
-    throw 'open() Failed: ' + err;
+  console.log("Reading", path);
+  let [err, fd] = await open(path, 0, 0);
+  if (err !== 0) {
+    throw new Error("open() Failed: " + err);
   }
-  var stat_buf;
+  let stat_buf;
   [err, stat_buf] = await fstat(fd);
-  if (err != 0) {
-    throw 'fstat() Failed: ' + err;
+  if (err !== 0) {
+    throw new Error("fstat() Failed: " + err);
   }
 
   // TODO don't hardcode offset
-  var st_size = (new BigInt64Array(stat_buf.buffer.slice(48, 48+8)))[0];
-  
-  var bytes, len;
+  const st_size = (new BigInt64Array(stat_buf.buffer.slice(48, 48 + 8)))[0];
+
+  let bytes;
+  let len;
   [err, len, bytes] = await read(fd, Number(st_size));
-  if (err != 0) {
-    throw 'read() Failed: ' + err;
+  if (err !== 0) {
+    throw new Error("read() Failed: " + err);
   }
-  console.log('Read', len, 'byte file');
+  console.log("Read", len, "byte file");
   return bytes;
 }
 
 // Write an error to the JavaScript console, and stderr
 function print_error(message: string) {
   console.error(message);
-  process.syscallAsync('pwrite', [2, message + '\n', -1], []);
+  process.syscallAsync("pwrite", [2, message + "\n", -1], []);
 }
 
 // Return the name of the system call with a certain number
 // TODO: More efficient
 function syscall_number_to_name(num: number): string | null {
-  for (var [k, v] of Object.entries(SYS)) {
+  for (const [k, v] of Object.entries(SYS)) {
     if (v === num) {
       return k;
     }
-  };
+  }
   return null;
 }
 
 // Issue a system call. This is the function exported to wasm.
 function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4: number, a5: number, a6: number) {
   if (WASM_STRACE) {
-    var name = syscall_number_to_name(trap);
-    process.syscallAsync('pwrite',
-      [2, `${name || 'unknown'}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6})\n`, -1],
+    const name = syscall_number_to_name(trap);
+    process.syscallAsync("pwrite",
+      [2, `${name || "unknown"}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6})\n`, -1],
       []);
   }
-  console.log('__browsix_syscall', [trap, a1, a2, a3, a4, a5, a6]);
+  console.log("__browsix_syscall", [trap, a1, a2, a3, a4, a5, a6]);
   switch (trap) {
     case SYS.read:
     case SYS.write:
@@ -112,7 +113,7 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
       // TODO Threads support
       return process.syscallSync(SYS.getpid, 0, 0, 0, 0, 0, 0);
     case SYS.dup2:
-      if (a1 == a2) {
+      if (a1 === a2) {
         return a2;
       } else {
         return process.syscallSync(SYS.dup3, a1, a2, 0, 0, 0, 0);
@@ -121,16 +122,16 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
     // case SYS.clock_gettime:
     case SYS.writev:
       // TODO probably should be done with one write()
-      var written = 0;
-      for (var i = 0; i < a3; i++) {
-        var buf = program.HEAP32[a2 / 4 + 2*i];
-        var len = program.HEAP32[a2 / 4 + 2*i + 1];
-        var ret = process.syscallSync(SYS.write, a1, buf, len, 0, 0, 0);
+      let written = 0;
+      for (let i = 0; i < a3; i++) {
+        const buf = program.HEAP32[a2 / 4 + 2 * i];
+        const len = program.HEAP32[a2 / 4 + 2 * i + 1];
+        const ret = process.syscallSync(SYS.write, a1, buf, len, 0, 0, 0);
         if (ret < 0) {
           return ret;
         }
         written += len;
-        if (ret != len) {
+        if (ret !== len) {
           break;
         }
       }
@@ -140,7 +141,7 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
       // XXX is there any issue with this?
       return 0;
     default:
-      var name = syscall_number_to_name(trap);
+      const name = syscall_number_to_name(trap);
       if (name === null) {
         print_error("Unrecognized system call " + trap);
       } else {
@@ -153,16 +154,16 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
 // Handler for the 'init' signal, which the Browsix kernel sends at startup
 // with the processes arguments, environmental variables, etc.
 async function init(data: any) {
-  console.log('init');
+  console.log("init");
 
-  var args = data.args[0];
-  var executable = args[1];
+  let args = data.args[0];
+  const executable = args[1];
   args = args.slice(2);
-  var environ = data.args[1];
+  const environ = data.args[1];
 
-  if (environ['WASM_STRACE']) {
+  if (environ.WASM_STRACE) {
     WASM_STRACE = true;
-    delete environ['WASM_STRACE'];
+    delete environ.WASM_STRACE;
   }
 
   // TODO copy heap from args[4]
@@ -170,31 +171,31 @@ async function init(data: any) {
   // Pass SharedArrayBuffer to kernel, so it can access wasm's memory and
   // support synchronous system calls.
   // TODO handle error
-  var waitOff = 0; // TODO
+  const waitOff = 0; // TODO
   await process.personality(memory.buffer, waitOff);
 
-  var bytes = await readFile(executable);
-  var env = {
-    __browsix_syscall: __browsix_syscall,
-    memory: memory
+  const bytes = await readFile(executable);
+  const env = {
+    __browsix_syscall,
+    memory,
   };
-  var results = await WebAssembly.instantiate(bytes, {env: env});
+  const results = await WebAssembly.instantiate(bytes, {env});
 
   program = new WasmMuslProgram(results.instance, memory);
   program.run_and_exit(args, environ);
 }
 
-var memory = new WebAssembly.Memory({
-  'initial': 1024,
-  'maximum': 1024,
+let memory = new WebAssembly.Memory({
+  initial: 1024,
+  maximum: 1024,
 // @ts-ignore
-  'shared': true
+  shared: true,
 });
 
-var WASM_STRACE: boolean = false;
+let WASM_STRACE: boolean = false;
 
 // TODO No cast
-var process = new BrowsixProcess(self as DedicatedWorkerGlobalScope);
-var program: WasmMuslProgram;
+let process = new BrowsixProcess(self as DedicatedWorkerGlobalScope);
+let program: WasmMuslProgram;
 
-process.onSignal('init', init);
+process.onSignal("init", init);
