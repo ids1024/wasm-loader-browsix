@@ -2,7 +2,7 @@ MUSL := musl
 
 all: wasm.js
 
-wasm.js: wasm.ts syscall_generated.ts
+wasm.js: syscall_generated.ts src/wasm.ts
 	tsc
 
 syscall_generated.ts: $(MUSL)/arch/wasm32/bits/syscall.h.in
