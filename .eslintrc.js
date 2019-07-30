@@ -4,11 +4,10 @@ module.exports = {
   },
   parser: "@typescript-eslint/parser",
   extends: "eslint:recommended",
-  globals: {
-    WebAssembly: 'readonly'
-  },
   rules: {
     "semi": ["error", "always"],
-    "indent": ["error", 4]
+    "indent": ["error", 4],
+    "no-unused-vars": ["off"],
+    "no-undef": ["off"]
   }
 }
