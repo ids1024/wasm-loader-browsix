@@ -119,23 +119,20 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
             return process.syscallSync(SYS.dup3, a1, a2, 0, 0, 0, 0);
         }
     // TODO
-    // case SYS.clock_gettime:
+    case SYS.clock_gettime:
+        return 0;
     case SYS.writev:
-        // TODO probably should be done with one write()
-        let written = 0;
+        // TODO implement in Browsix kernel for efficiency
+        const combined_buf = program.__heap_end;
         for (let i = 0; i < a3; i++) {
             const buf = program.HEAP32[a2 / 4 + 2 * i];
             const len = program.HEAP32[a2 / 4 + 2 * i + 1];
-            const ret = process.syscallSync(SYS.write, a1, buf, len, 0, 0, 0);
-            if (ret < 0) {
-                return ret;
-            }
-            written += len;
-            if (ret !== len) {
-                break;
-            }
+            program.HEAPU8.copyWithin(program.__heap_end, buf, buf + len);
+            program.__heap_end += len;
         }
-        return written;
+        const ret = process.syscallSync(SYS.write, a1, combined_buf, program.__heap_end - combined_buf, 0, 0, 0);
+        program.__heap_end = combined_buf;
+        return ret;
     // case SYS.readv:
     case SYS.madvise:
         // XXX is there any issue with this?
