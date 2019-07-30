@@ -9,8 +9,8 @@ function round_up_align(num: number, align: number): number {
 class WasmMuslProgram {
   private instance: WebAssembly.Instance;
   private memory: WebAssembly.Memory;
-  private HEAPU8: Uint8Array;
-  private HEAP32: Int32Array;
+  HEAPU8: Uint8Array;
+  HEAP32: Int32Array;
   readonly __heap_base: number;
   __heap_end: number;
 
@@ -30,7 +30,7 @@ class WasmMuslProgram {
     // since WebAssembly functions have a fixed number of arguments. So it isn't
     // possible to support main() with varying number of arguments when calling
     // from WebAssembly.
-    this.instance.exports.__init_libc(envp, HEAP32[argv / 4]);
+    this.instance.exports.__init_libc(envp, this.HEAP32[argv / 4]);
     this.instance.exports.__libc_start_init();
     var ret = this.instance.exports.main(args.length, argv, envp);
     this.instance.exports.exit(ret);

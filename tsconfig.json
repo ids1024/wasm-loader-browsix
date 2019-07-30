@@ -1,5 +1,5 @@
 {
-  "files": ["syscall_generated.ts", "src/WasmMuslProgram.ts", "src/main.ts"],
+  "files": ["syscall_generated.ts", "src/BrowsixProcess.ts", "src/WasmMuslProgram.ts", "src/main.ts"],
   "compilerOptions": {
     "target": "es5",
     "lib": ["es2019", "esnext.bigint", "webworker"],
