@@ -43,13 +43,6 @@ async function readFile(path: string): Promise<Uint8Array> {
   return bytes;
 }
 
-var memory = new WebAssembly.Memory({ 
-  'initial': 1024,
-  'maximum': 1024,
-// @ts-ignore
-  'shared': true
-});
-
 // Write an error to the JavaScript console, and stderr
 function print_error(message: string) {
   console.error(message);
@@ -159,13 +152,6 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
   }
 }
 
-
-var WASM_STRACE: boolean = false;
-
-// TODO No cast
-var process = new BrowsixProcess(self as DedicatedWorkerGlobalScope);
-var program: WasmMuslProgram;
-
 // Handler for the 'init' signal, which the Browsix kernel sends at startup
 // with the processes arguments, environmental variables, etc.
 async function init(data: any) {
@@ -199,5 +185,18 @@ async function init(data: any) {
   program = new WasmMuslProgram(results.instance, memory);
   program.run_and_exit(args, environ);
 }
+
+var memory = new WebAssembly.Memory({
+  'initial': 1024,
+  'maximum': 1024,
+// @ts-ignore
+  'shared': true
+});
+
+var WASM_STRACE: boolean = false;
+
+// TODO No cast
+var process = new BrowsixProcess(self as DedicatedWorkerGlobalScope);
+var program: WasmMuslProgram;
 
 process.onSignal('init', init);
