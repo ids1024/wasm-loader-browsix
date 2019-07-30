@@ -159,10 +159,6 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
   }
 }
 
-var env = {
-  __browsix_syscall: __browsix_syscall,
-  memory: memory
-};
 
 var WASM_STRACE: boolean = false;
 
@@ -194,6 +190,10 @@ async function init(data: any) {
   await process.personality(memory.buffer, waitOff);
 
   var bytes = await readFile(executable);
+  var env = {
+    __browsix_syscall: __browsix_syscall,
+    memory: memory
+  };
   var results = await WebAssembly.instantiate(bytes, {env: env});
 
   program = new WasmMuslProgram(results.instance, memory);
