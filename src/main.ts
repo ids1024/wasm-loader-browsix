@@ -120,6 +120,12 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
         }
     // TODO
     case SYS.clock_gettime:
+        // XXX CLOCK_MONOTONIC
+        const time = Date.now();
+        // tv_sec
+        program.HEAP32[a2 / 4] = time / 1000;
+        // tv_nsec
+        program.HEAP32[a2 / 4 + 1] = (time % 1000) * 1000;
         return 0;
     case SYS.writev:
         // TODO implement in Browsix kernel for efficiency
