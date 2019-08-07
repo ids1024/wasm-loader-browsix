@@ -1,3 +1,5 @@
+const WASM_PAGE_SIZE = 64 * 1024;
+
 // Round 'num' up so it is aligned to a multiple of 'align'
 function round_up_align(num: number, align: number): number {
     if (align === 0 || num % align === 0) {
@@ -9,7 +11,6 @@ function round_up_align(num: number, align: number): number {
 class WasmMuslProgram {
   public HEAPU8: Uint8Array;
   public HEAP32: Int32Array;
-  public readonly __heap_base: number;
   public __heap_end: number;
   private instance: WebAssembly.Instance;
   private memory: WebAssembly.Memory;
@@ -19,8 +20,7 @@ class WasmMuslProgram {
       this.memory = memory;
       this.HEAPU8 = new Uint8Array(memory.buffer);
       this.HEAP32 = new Int32Array(memory.buffer);
-      this.__heap_base = instance.exports.__heap_base.value;
-      this.__heap_end = this.__heap_base;
+      this.__heap_end = instance.exports.__heap_base.value;
   }
 
   public run_and_exit(args: string[], environ: string[]) {
@@ -36,16 +36,31 @@ class WasmMuslProgram {
       this.instance.exports.exit(ret);
   }
 
-  // Writes JS string str to WASM memory at address addr,
-  // as NUL-terminated UTF-8. Returns the length of the C
-  // string (excluding NUL byte).
-  public str_to_mem(str: string, addr: number): number {
-      // XXX integrate with allocator?
+  public brk(end: number) {
+      let pages = this.memory.buffer.byteLength / WASM_PAGE_SIZE;
+      let new_pages = (end + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
+      if (new_pages > pages) {
+          this.memory.grow(new_pages - pages);
+      }
+      this.__heap_end = end;
+  }
+
+  public sbrk(n: number): number {
+      let prev_end = this.__heap_end;
+      this.brk(this.__heap_end + n);
+      return prev_end;
+  }
+
+  // Allocates WASM memory with brk() and writes JS string str,
+  // as NUL-terminated UTF-8. Returns address of the start of
+  // the string.
+  private str_to_mem(str: string): number {
       const encoder = new TextEncoder();
       const bytes = encoder.encode(str);
+      let addr = this.sbrk(bytes.length + 1);
       this.HEAPU8.set(bytes, addr);
       this.HEAPU8[addr + bytes.length] = 0; // NUL
-      return bytes.length;
+      return addr;
   }
 
   // Write argv and environ to the heap, where musl can access them
@@ -56,23 +71,19 @@ class WasmMuslProgram {
       this.__heap_end = round_up_align(this.__heap_end, 4);
 
       // Allocate space for argv
-      const argv = this.__heap_end;
-      this.__heap_end += (args.length + 1) * 4;
+      const argv = this.sbrk((args.length + 1) * 4);
 
       // Allocate space for environ
-      const envp = this.__heap_end;
-      this.__heap_end += (Object.keys(environ).length + 1) * 4;
+      const envp = this.sbrk((Object.keys(environ).length + 1) * 4);
 
-      // auxv
       // http://articles.manugarg.com/aboutelfauxiliaryvectors
-      this.HEAP32[this.__heap_end / 4] = 0;
-      this.HEAP32[this.__heap_end / 4 + 1] = 0;
-      this.__heap_end += 8;
+      const auxv = this.sbrk(8);
+      this.HEAP32[auxv / 4] = 0;
+      this.HEAP32[auxv / 4 + 1] = 0;
 
       // Write arguments and populate argv
       for (let i = 0; i < args.length; i++) {
-          this.HEAP32[argv / 4 + i] = this.__heap_end;
-          this.__heap_end += this.str_to_mem(args[i], this.__heap_end) + 1;
+          this.HEAP32[argv / 4 + i] = this.str_to_mem(args[i]);
       }
       // NULL terminate
       this.HEAP32[argv / 4 + args.length] = 0;
@@ -80,10 +91,9 @@ class WasmMuslProgram {
       // Write env variables and populate envp
       const entries = Object.entries(environ);
       for (let i = 0; i < entries.length; i++) {
-          this.HEAP32[envp / 4 + i] = this.__heap_end;
           const [k, v] = entries[i];
           const entry = k + "=" + v;
-          this.__heap_end += this.str_to_mem(entry, this.__heap_end) + 1;
+          this.HEAP32[envp / 4 + i] = this.str_to_mem(entry);
       }
       // NULL terminate
       this.HEAP32[envp / 4 + entries.length] = 0;

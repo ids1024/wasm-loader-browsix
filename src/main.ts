@@ -103,10 +103,8 @@ function __browsix_syscall(trap: number, a1: number, a2: number, a3: number, a4:
     case SYS.getuid32:
         return 0;
     case SYS.brk:
-        // TODO
-        if (a1 > program.__heap_end && a1 < memory.buffer.byteLength) {
-            program.__heap_end = a1;
-        }
+        // TODO handle failure
+        program.brk(a1);
         console.log(program.__heap_end);
         return program.__heap_end;
     case SYS.set_tid_address:
