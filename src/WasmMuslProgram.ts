@@ -26,7 +26,7 @@ class WasmMuslProgram {
   public run_and_exit(args: string[], environ: string[]) {
       const [argv, envp] = this.write_args_environ_to_heap(args, environ);
 
-      // NOTE: we can't just call musl's cstart(). It is broken on WebAssembly,
+      // NOTE: we can't just call musl's _start_c(). It is broken on WebAssembly,
       // since WebAssembly functions have a fixed number of arguments. So it isn't
       // possible to support main() with varying number of arguments when calling
       // from WebAssembly.
